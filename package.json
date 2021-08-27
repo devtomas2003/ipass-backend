@@ -1,0 +1,7 @@
+{
+  "name": "ipass-back",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Tomas <dev.tomas2003@gmail.com>",
+  "license": "MIT"
+}
