@@ -2,11 +2,14 @@ const Utilizadores = require('../models/Utilizadores');
 const SignAuths = require('../models/SignAuths');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt-nodejs');
-const crypto = require('crypto');
+const NodeRSA = require('node-rsa');
+const jwt = require('jsonwebtoken');
 
 module.exports = {
-    async signAuthenticate(req, res){
+    async signAuth(req, res){
         const { user, pass } = req.body;
+        const bufferPASS = new Buffer(pass, 'base64');
+        const password = bufferPASS.toString('ascii');
         const userAuth = await Utilizadores.findOne({
             where: {
                 utilizador: user
@@ -14,7 +17,7 @@ module.exports = {
             attributes: ["id", "estado", "password"]
         });
         if(userAuth){
-            bcrypt.compare(pass, userAuth.password, async function(err, result) {
+            bcrypt.compare(password, userAuth.password, async function(err, result) {
                 if(result){
                     if(userAuth.estado === 0){
                         res.status(200).json({
@@ -28,7 +31,6 @@ module.exports = {
                             textForAuth: signToken
                         });
                         res.status(200).json({
-                            "id": userAuth.id,
                             "textForAuth": signToken,
                             "status": userAuth.estado
                         });
@@ -72,12 +74,19 @@ module.exports = {
                     id: findText.userId
                 }
             });
-            const verifier = crypto.createVerify("RSA-SHA256");
-            verifier.update(textToBeSign);
-            const isVerified = verifier.verify(findUser.chavePublica, textSigned, "base64");
-            res.status(200).json({
-                "status": isVerified
-            });
+            const pubRSA = new NodeRSA(findUser.chavePublica);
+            const verified = pubRSA.verify(textToBeSign, textSigned, "utf8", "base64");
+            if(verified){
+                const authToken = jwt.sign({ userId: findText.userId }, 'c72c7f79-757b-468c-9f4f-fa1808f3087c');
+                res.status(200).json({
+                    "status": "authenticated",
+                    authToken
+                });
+            }else{
+                res.status(200).json({
+                    "status": "invalid-signature"
+                });
+            }
         }else{
             res.status(200).json({
                 "status": "text-notfound"
@@ -85,20 +94,12 @@ module.exports = {
         }
     },
     async getPEM(req, res){
-        const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
-            modulusLength: 4096,
-            publicKeyEncoding: {
-              type: 'spki',
-              format: 'pem'
-            },
-            privateKeyEncoding: {
-              type: 'pkcs8',
-              format: 'pem'
-            }
-        });
+        const keysPair = new NodeRSA({ b: 4096 });
+        const pubKey = keysPair.exportKey('public');
+        const priKey = keysPair.exportKey('private');
         res.status(200).json({
-            "publica": publicKey.replace(/(\r\n|\n|\r)/gm,""),
-            "privado": privateKey.replace(/(\r\n|\n|\r)/gm,"")
+            "publica": pubKey.replace(/(\r\n|\n|\r)/gm,""),
+            "privado": priKey.replace(/(\r\n|\n|\r)/gm,"")
         });
     }
 };
