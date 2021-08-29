@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 module.exports = {
     async signAuth(req, res){
         const { user, pass } = req.body;
-        const bufferPASS = new Buffer(pass, 'base64');
+        const bufferPASS = Buffer.from(pass, 'base64');
         const password = bufferPASS.toString('ascii');
         const userAuth = await Utilizadores.findOne({
             where: {
@@ -20,8 +20,10 @@ module.exports = {
             bcrypt.compare(password, userAuth.password, async function(err, result) {
                 if(result){
                     if(userAuth.estado === 0){
+                        const authToken = jwt.sign({ userId: userAuth.id }, 'c72c7f79-757b-468c-9f4f-fa1808f3087c', { expiresIn: 10800 });
                         res.status(200).json({
-                            "status": 0
+                            "status": 0,
+                            authToken
                         });
                     }else{
                         const signToken = uuidv4();
@@ -36,14 +38,14 @@ module.exports = {
                         });
                     }
                 }else{
-                    res.status(200).json({
-                        "status": "not-auth"
+                    res.status(404).json({
+                        "status": "not-valid-credentials"
                     });
                 }
             });
         }else{
-            res.status(200).json({
-                "status": "not-auth"
+            res.status(404).json({
+                "status": "not-valid-credentials"
             });
         }
     },
@@ -69,6 +71,11 @@ module.exports = {
             }
         });
         if(findText){
+            await SignAuths.destroy({
+                where: {
+                    textForAuth: textToBeSign
+                }
+            });
             const findUser = await Utilizadores.findOne({
                 where: {
                     id: findText.userId
@@ -83,12 +90,12 @@ module.exports = {
                     authToken
                 });
             }else{
-                res.status(200).json({
+                res.status(401).json({
                     "status": "invalid-signature"
                 });
             }
         }else{
-            res.status(200).json({
+            res.status(404).json({
                 "status": "text-notfound"
             });
         }
@@ -100,6 +107,11 @@ module.exports = {
         res.status(200).json({
             "publica": pubKey.replace(/(\r\n|\n|\r)/gm,""),
             "privado": priKey.replace(/(\r\n|\n|\r)/gm,"")
+        });
+    },
+    async validateSession(req, res){
+        res.status(200).json({
+            "isValid": true
         });
     }
 };
