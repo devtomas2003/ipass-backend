@@ -9,5 +9,7 @@ routes.post('/addUser', UsersController.addUser);
 routes.post('/keys', UsersController.getPEM);
 routes.use(AuthMiddleware);
 routes.post('/validateSession', UsersController.validateSession);
+routes.post('/getUserInfo', UsersController.getUserInfo);
+routes.post('/savePublicKey', UsersController.savePublicKey)
 
 module.exports = routes;

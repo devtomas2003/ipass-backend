@@ -14,13 +14,15 @@ module.exports = {
             where: {
                 utilizador: user
             },
-            attributes: ["id", "estado", "password"]
+            attributes: ["id", "estado", "password", "userLevel"]
         });
         if(userAuth){
             bcrypt.compare(password, userAuth.password, async function(err, result) {
                 if(result){
-                    if(userAuth.estado === 0){
-                        const authToken = jwt.sign({ userId: userAuth.id }, 'c72c7f79-757b-468c-9f4f-fa1808f3087c', { expiresIn: 10800 });
+                    if(userAuth.estado === 2){
+                        return res.status(401).json({ "status": "account-disable" });
+                    }else if(userAuth.estado === 0){
+                        const authToken = jwt.sign({ userId: userAuth.id }, process.env.ENCRYPT_TOKEN, { expiresIn: 10800 });
                         res.status(200).json({
                             "status": 0,
                             authToken
@@ -84,7 +86,7 @@ module.exports = {
             const pubRSA = new NodeRSA(findUser.chavePublica);
             const verified = pubRSA.verify(textToBeSign, textSigned, "utf8", "base64");
             if(verified){
-                const authToken = jwt.sign({ userId: findText.userId }, 'c72c7f79-757b-468c-9f4f-fa1808f3087c');
+                const authToken = jwt.sign({ userId: findText.userId }, process.env.ENCRYPT_TOKEN);
                 res.status(200).json({
                     "status": "authenticated",
                     authToken
@@ -113,5 +115,28 @@ module.exports = {
         res.status(200).json({
             "isValid": true
         });
+    },
+    async getUserInfo(req, res){
+        const userId = req.userId;
+        const user = await Utilizadores.findOne({
+            where: {
+                id: userId
+            }
+        });
+        res.status(200).json({
+            "nome": user.nome
+        });
+    },
+    async savePublicKey(req, res){
+        const userId = req.userId;
+        const { publicKey } = req.body;
+        await Utilizadores.update({
+            chavePublica: publicKey
+        }, {
+            where: {
+                id: userId
+            }
+        });
+        res.status(200).json({ "status": "updated" });
     }
 };
