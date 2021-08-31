@@ -124,17 +124,14 @@ module.exports = {
             }
         });
         res.status(200).json({
-            "nome": user.nome,
-            "ruleID": user.userLevel,
-            "estado": user.estado
+            "nome": user.nome
         });
     },
     async savePublicKey(req, res){
         const userId = req.userId;
         const { publicKey } = req.body;
         await Utilizadores.update({
-            chavePublica: publicKey,
-            estado: 1
+            chavePublica: publicKey
         }, {
             where: {
                 id: userId
